@@ -1,78 +1,75 @@
-# mobsp.awk -- MobileSpawner for SWGEmu, 2012, Benoit Marcot
+#
 # NAME
-#         mobsp.awk
-
+#
+#         swgemu-mobsp.awk -- MobileSpawner for SWGEmu
+#
 # SYNOPSIS
-#         $ gawk -f mobsp.awk [OPTIONS] [FILE]
-
+#
+#         $ gawk -f swgemu-mobsp.awk [OPTIONS] [FILE]
+#
 # DESCRIPTION
-
-# Command-line options:
-# --assign planet="naboo", "tatooine", "endor", ...
-# --assign respawn=xxx
-# --assign respawn=xxx
-
-
-
+#
+# Command-line options are:
+#
+#       --assign planet="naboo", "tatooine", 'lok', "endor", ...
+# Set the planet where mobile will spawned to. Overridden by the chat command.
+#
+#       --assign respawn=unisgned_integer
+# Set the default mobiles' respawn time. Overriden by the client chat command.
+#
+#       --assign mobile=creature_template_mobile_path
+# Set the default mobiles'  creature template.  Overriden  by the client  chat
+# command.
+#
+# Client chat commands are:
+#
+#       cellid=unsigned_integer
+# A cellid must be provided when spawning an indoor mobile. Unfortunately it's
+# not  possible to log  the  world  cellid to the chatbox. Be sure to say this
+# command in the chatbox whenever you  want to spawn  a mobile in  a different
+# rooms. Setting up a cellid is not  needed  when  spawning an outdoor  mobile
+# (cellid is 0).
+#
+#       planet="naboo", "tatooine", 'lok', "endor", ...
+#
+#       respawn='an_unsigned_integer'
+#
+#       mobile='creature_mobile_template_name'
+# Set the template for the next mobiles to be spawned. The creature template
+# name is the filename of the mobile that can be found under
+# /bin/scripts/mobile/. Use this command everytime you want to spawn a new
+# type of mobile.
+#
+#       random text
+# Output as a LUA code comment.
+#
 # AUTHOR
-#         Written by Benoit Marcot.
-
+#
+#         Written by Benoit Marcot, 2012.
+#
 # REPORTING BUGS
-#       Report bugs and propose changes on http://github
-
-# spmob.awk for SWGEmu, 2012 Benoit
-# In your SWGEmu client, start loging of the Spatial chat output with
-# the command '\log'. Everything that is printed out to the chat output is
-# now logged to a file inside your SWG client path, with its filename following
-#     the pattern "chatbox-'some_date'.log". When loging feature has been start, travel to the location you want to populate with mobiles.
-
-# Online loging feature
-
-#     The following commands, when entered into the Spatial chat
-
-# The following text patterns extracted from the log file will be processed as follow:
-
-# output of '/dumpz'
-# Will spawn a mobile at the current player location.
-
-#     cellid='an_unsigned_integer'
-#     A cellid must be provided when spawning indoor mobiles. Unfortunately it's not possible, to log the current cellid to the chatbox. Be sure to say this command in the chatbox whenever you want to spawn mobiles in different rooms. Nothing to do when spawning outdoor.
-
-#     planet="tatooine", "naboo", "lok", "endor", ...
-#     Tells spmob.awk on what planet you are going to spawn mobiles.
-
-#     respawn='an_unsigned_integer'
-#     Set the respawn time for the next mobiles to be spawned. By default, the respawn time is '1' (immediate respawn).
-
-#     mob='creature_mobile_template_name'
-#     Set the template for the next mobiles to be spawned. The creature template name is the filename of the mobile that can be found in /bin/scripts/mobile/. Use this command everytime you want to spawn a new type of mobile.
-
-# Anything else
-# Output as a LUA comment.
-
-# # USAGE:
-#   $ gawk -f spmob.awk chatlog_file
-
-#|(, ox =)
+#
+#       Please report bugs on https://github.com/bmarcot/swgemu-mobsp.awk,
+# change propositions are welcomed.
+#
 
 BEGIN {
     FS = "([ ]+x = )|(, z = )|(, y = )|(, ow = )|(, ox = )|(, cellid = )|( in range)|( object)|(\")"
     if ("" == planet)
-        pn = "tatooine"         # planet name
+        pn = "tatooine"
     else
         pn = planet
     if ("" == respawn)
-        rt = 1                  # respawn time
+        rt = 1
     else
         rt = respawn
-    mob = "mob_template"        # mobile template
-#    cid = -1                    # indoor cellid
+    if ("" != mobile)
+        mob = mobile
 }
 /^\[Spatial\][ [:digit:]:\t]+ x = / {
     format = "spawnMobile(\"%s\", \"%s\", %u, %4.3f, %4.3f, %4.3f, %4.3f, %u)\n";
-# print "6 " $6
-# print "7 " $7
-#         print cid
+    if ("" == mob)
+        print "warning: no mobile template" > "/dev/stderr"
     if (0 != $7)
         if (0 != cid)
             printf format, pn, mob, rt, $2, $3, $4, get_heading($5), cid
@@ -82,19 +79,19 @@ BEGIN {
         printf format, pn, mob, rt, $2, $3, $4, get_heading($5), $7
     c++
 }
-# /^\[Spatial\][ [:digit:]:\t]+ .+\"planet=/ {
-#     pn = $2
-# }
-# /^\[Spatial\][ [:digit:]:\t]+ .+\"mob=/ {
-#     mob = $2
-# }
 /^\[Spatial\][[:alnum:]\[\]\-,: ]+\"cellid=/ {
     cid = substr($2, length("cellid=") + 1)
 }
-# /^\[Spatial\][ [:digit:]:\t]+ .+\"respawn=/ {
-#     rt = $2
-# }
-/^\[Spatial\][[:alnum:]\[\]\-,: ]+\"[^(cellid=)]/ {
+/^\[Spatial\][[:alnum:]\[\]\-,: ]+\"planet=/ {
+    pn = substr($2, length("planet=") + 1)
+}
+/^\[Spatial\][[:alnum:]\[\]\-,: ]+\"mobile=/ {
+    mob = substr($2, length("mobile=") + 1)
+}
+/^\[Spatial\][[:alnum:]\[\]\-,: ]+\"respawn=/ {
+    rt = substr($2, length("respawn=") + 1)
+}
+/^\[Spatial\][[:alnum:]\[\]\-,: ]+\"[^((cellid=)|(planet=)|(mobile=)|(respawn=))]/ {
     printf "-- %s\n", $2
 }
 END {
