@@ -127,5 +127,8 @@ function acosd(x)
 
 function get_heading(ow)
 {
-    return 2 * acosd(ow)
+    d = 2 * acosd(ow)
+    if (d <= 180)
+        return 2 * acosd(ow)
+    return d - 360
 }
